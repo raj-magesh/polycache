@@ -1,0 +1,72 @@
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[project]
+name = "polycache"
+description = "Cache function outputs to disk in a variety of formats (.pkl, .npy, .nc, etc.)"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Raj Magesh Gauthaman", email = "polycache@raj-magesh.org" }]
+keywords = [
+    "flexible",
+    "multiformat",
+    "cache",
+    "function calls",
+    "local disk",
+    "decorator",
+    "numpy",
+    "xarray",
+    "pickle",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
+urls = { repository = "https://codeberg.org/raj-magesh/polycache" }
+dependencies = [
+    "numpy",
+    "xarray[complete]",
+    "cf-xarray",
+    "netCDF4",
+    "nibabel",
+    "Pillow",
+    "coverage"  # FIXME: remove when https://github.com/numba/numba/issues/10239 is closed
+]
+version = "0.1.0"  # FIXME(dynamic version): https://github.com/astral-sh/uv/issues/8714
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "pytest",
+    "sphinx",
+]
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[tool.ruff]
+target-version = "py313"
+preview = true
+extend-include = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "CPY001",
+    "PD013",
+    "D103",
+    "E302",
+    "PLR0913",
+    "D203",
+    "D212",
+    "PD013",
+    "PD010",
+]
