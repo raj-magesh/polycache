@@ -33,9 +33,9 @@ classifiers = [
 urls = { repository = "https://codeberg.org/raj-magesh/polycache" }
 dependencies = [
     "numpy",
-    "xarray[complete]",
+    "xarray",
+    "h5netcdf",
     "cf-xarray",
-    "netCDF4",
     "nibabel",
     "Pillow",
     "coverage"  # FIXME: remove when https://github.com/numba/numba/issues/10239 is closed
@@ -51,22 +51,3 @@ dev = [
 
 [tool.uv]
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
-
-[tool.ruff]
-target-version = "py313"
-preview = true
-extend-include = ["*.ipynb"]
-
-[tool.ruff.lint]
-select = ["ALL"]
-ignore = [
-    "CPY001",
-    "PD013",
-    "D103",
-    "E302",
-    "PLR0913",
-    "D203",
-    "D212",
-    "PD013",
-    "PD010",
-]
