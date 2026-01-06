@@ -1,28 +1,46 @@
 import functools
+import importlib
 import inspect
 import os
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, ParamSpec, Self, TypeVar
 
-import nibabel as nib
-import numpy as np
-import xarray as xr
-from PIL import Image
+from xdg_base_dirs import xdg_cache_home
 
 from polycache._handlers import get_handler
+
+
+def _is_installed(package_name: str) -> bool:
+    return importlib.util.find_spec(package_name) is not None
+
+
+if _is_installed("mne"):
+    import mne
+if _is_installed("nibabel"):
+    import nibabel as nib
+if _is_installed("numpy"):
+    import numpy as np
+if _is_installed("xarray"):
+    import xarray as xr
+if _is_installed("PIL"):
+    from PIL import Image
+
 
 P = ParamSpec("P")
 R = TypeVar("R")
 
 POLYCACHE_HOME = Path(
-    os.getenv("POLYCACHE_HOME", str(Path.home() / ".cache" / "polycache")),
+    os.getenv(
+        "POLYCACHE_HOME",
+        str(xdg_cache_home() / "polycache"),
+    ),
 )
 DEFAULT_MODE = os.getenv("POLYCACHE_MODE", "normal")
 
 
 class Cacher:
-    def __init__(  # type: ignore  # kwargs can be Any
+    def __init__(
         self: Self,
         identifier: str | None = None,
         *,
@@ -33,8 +51,7 @@ class Cacher:
         kwargs_save: Mapping[str, Any] = {},
         kwargs_load: Mapping[str, Any] = {},
     ) -> None:
-        """
-        Cache outputs of functions to disk.
+        """Cache outputs of functions to disk.
 
         Avoids re-evaluation of (potentially expensive) function when called again.
 
@@ -129,16 +146,17 @@ class Cacher:
             if self.helper is not None:
                 args_to_format = self.helper(args_to_format)
             identifier = self.identifier.format(**args_to_format)
+            filepath = self.path / identifier
 
             match self.mode:
                 case "normal":
-                    if self._get_path(identifier):
+                    if filepath.exists():
                         result = self._load(identifier)
                     else:
                         result = func(*args, **kwargs)
                         self._save(result, identifier=identifier)
                 case "readonly":
-                    if self._get_path(identifier):
+                    if filepath.exists():
                         result = self._load(identifier)
                     else:
                         result = func(*args, **kwargs)
@@ -146,8 +164,8 @@ class Cacher:
                     result = func(*args, **kwargs)
                     self._save(result, identifier=identifier)
                 case "delete":
-                    if self._get_path(identifier):
-                        self._delete(identifier)
+                    if filepath.exists():
+                        filepath.unlink()
                     result = func(*args, **kwargs)
                 case "ignore":
                     result = func(*args, **kwargs)
@@ -162,36 +180,53 @@ class Cacher:
         return wrapper
 
     def _save(self: Self, result: Any, *, identifier: str) -> None:  # type: ignore  # result can be Any
-        path = self.path / identifier
-        path.parent.mkdir(parents=True, exist_ok=True)
+        filepath = self.path / identifier
+        filepath.parent.mkdir(parents=True, exist_ok=True)
 
         if self.filetype == "auto":
-            if isinstance(result, np.ndarray):
+            filetype = None
+
+            if _is_installed("numpy") and isinstance(result, np.ndarray):
                 filetype = "numpy"
                 suffix = ".npy"
-            elif isinstance(result, xr.DataArray | xr.Dataset):
+
+            if _is_installed("xarray") and isinstance(
+                result, xr.DataArray | xr.Dataset
+            ):
                 filetype = "netCDF4"
                 suffix = ".nc"
-            elif isinstance(result, nib.nifti1.Nifti1Image):
+
+            if _is_installed("nibabel") and isinstance(result, nib.nifti1.Nifti1Image):
                 filetype = "NIfTI"
                 suffix = ".nii.gz"
-            elif isinstance(result, Image.Image):
+
+            if _is_installed("PIL") and isinstance(result, Image.Image):
                 filetype = "PIL"
                 suffix = None
-            else:
+
+            if _is_installed("mne"):
+                if isinstance(result, mne.io.Raw):
+                    filetype = "mne.io.Raw"
+                    suffix = ".fif"
+                elif isinstance(result, mne.Epochs):
+                    filetype = "mne.Epochs"
+                    suffix = "-epo.fif"
+
+            if filetype is None:
                 filetype = "pickle"
                 suffix = ".pkl"
-            if suffix is not None and path.suffix != suffix:
+
+            if suffix is not None and (not filepath.name.endswith(suffix)):
                 error = f"identifier must have suffix '{suffix}' if filetype is 'auto'"
                 raise ValueError(error)
         else:
             filetype = self.filetype
 
         handler = get_handler(filetype=filetype)
-        handler.save(result=result, path=path, **self.kwargs_save)
+        handler.save(result=result, path=filepath, **self.kwargs_save)
 
-    def _load(self: Self, identifier: str) -> Any:  # type: ignore  # file contents can be Any
-        path = self._get_path(identifier)
+    def _load(self: Self, identifier: str) -> Any:
+        path = self.path / identifier
 
         if self.filetype == "auto":
             match path.suffix:
@@ -205,6 +240,10 @@ class Cacher:
                     filetype = "NIfTI"
                 case ".png" | ".jpg":
                     filetype = "PIL"
+                case ".fif":
+                    filetype = (
+                        "mne.Epochs" if path.stem[-4:] == "-epo" else "mne.io.Raw"
+                    )
                 case _:
                     raise ValueError
         else:
@@ -214,16 +253,9 @@ class Cacher:
         return handler.load(path=path, **self.kwargs_load)
 
     def _delete(self: Self, identifier: str) -> None:
-        filepath = self._get_path(identifier)
-        filepath.unlink()
+        (self.path / identifier).unlink()
 
-    def _get_path(self: Self, identifier: str) -> Path | None:
-        path = self.path / identifier
-        if path.exists():
-            return path
-        return None
-
-    def _get_args(  # type: ignore  # arguments can be Any
+    def _get_args(
         self: Self,
         function: Callable[P, R],
         *args: P.args,
