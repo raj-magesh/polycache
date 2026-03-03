@@ -25,6 +25,8 @@ if _is_installed("xarray"):
     import xarray as xr
 if _is_installed("PIL"):
     from PIL import Image
+if _is_installed("edfio"):
+    import edfio
 
 
 P = ParamSpec("P")
@@ -200,6 +202,10 @@ class Cacher:
                 filetype = "NIfTI"
                 suffix = ".nii.gz"
 
+            if _is_installed("edfio") and isinstance(result, edfio.Edf):
+                filetype = "EDF"
+                suffix = ".edf"
+
             if _is_installed("PIL") and isinstance(result, Image.Image):
                 filetype = "PIL"
                 suffix = None
@@ -240,6 +246,8 @@ class Cacher:
                     filetype = "NIfTI"
                 case ".png" | ".jpg":
                     filetype = "PIL"
+                case ".edf":
+                    filetype = "EDF"
                 case ".fif":
                     filetype = (
                         "mne.Epochs" if path.stem[-4:] == "-epo" else "mne.io.Raw"
