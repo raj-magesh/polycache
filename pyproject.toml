@@ -4,21 +4,27 @@ build-backend = "uv_build"
 
 [project]
 name = "polycache"
-description = "Cache function outputs to disk in a variety of formats (.pkl, .npy, .nc, etc.)"
+description = "Cache function outputs to disk in a variety of native formats using a single flexible decorator"
 readme = "README.md"
-requires-python = ">=3.13"
-license = { file = "LICENSE" }
-authors = [{ name = "Raj Magesh Gauthaman", email = "polycache@raj-magesh.org" }]
+requires-python = ">=3.14"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Raj Magesh Gauthaman", email = "polycache@raj-magesh.org" },
+]
 keywords = [
-    "flexible",
-    "multiformat",
-    "cache",
-    "function calls",
+    "cache function outputs",
     "local disk",
+    "multiple native formats",
     "decorator",
+    "pickle",
     "numpy",
     "xarray",
-    "pickle",
+    "netCDF4",
+    "nibabel",
+    "NIfTI",
+    "MNE-Python",
+    "EDF",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -31,10 +37,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 urls = { repository = "https://codeberg.org/raj-magesh/polycache" }
-dependencies = [
-    "xdg-base-dirs",
-]
-version = "0.1.0"  # FIXME(dynamic version): https://github.com/astral-sh/uv/issues/8714
+dependencies = ["xdg-base-dirs"]
+version = "0.1.0"
 
 [dependency-groups]
 dev = [
@@ -50,4 +54,6 @@ dev = [
 ]
 
 [tool.uv]
-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]

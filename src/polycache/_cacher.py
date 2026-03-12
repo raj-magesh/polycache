@@ -2,13 +2,15 @@ import functools
 import importlib
 import inspect
 import os
-from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any, ParamSpec, Self, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, Self, TypeVar
 
 from xdg_base_dirs import xdg_cache_home
 
 from polycache._handlers import get_handler
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
 
 
 def _is_installed(package_name: str) -> bool:
@@ -181,7 +183,7 @@ class Cacher:
 
         return wrapper
 
-    def _save(self: Self, result: Any, *, identifier: str) -> None:  # type: ignore  # result can be Any
+    def _save(self: Self, result: Any, *, identifier: str) -> None:
         filepath = self.path / identifier
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
@@ -198,7 +200,9 @@ class Cacher:
                 filetype = "netCDF4"
                 suffix = ".nc"
 
-            if _is_installed("nibabel") and isinstance(result, nib.nifti1.Nifti1Image):
+            if _is_installed("nibabel") and isinstance(
+                result, nib.spatialimages.SpatialImage
+            ):
                 filetype = "NIfTI"
                 suffix = ".nii.gz"
 
@@ -235,25 +239,22 @@ class Cacher:
         path = self.path / identifier
 
         if self.filetype == "auto":
-            match path.suffix:
-                case ".npy":
-                    filetype = "numpy"
-                case ".nc":
-                    filetype = "netCDF4"
-                case ".pkl":
-                    filetype = "pickle"
-                case ".nii" | ".nii.gz":
-                    filetype = "NIfTI"
-                case ".png" | ".jpg":
-                    filetype = "PIL"
-                case ".edf":
-                    filetype = "EDF"
-                case ".fif":
-                    filetype = (
-                        "mne.Epochs" if path.stem[-4:] == "-epo" else "mne.io.Raw"
-                    )
-                case _:
-                    raise ValueError
+            if identifier.endswith(".npy"):
+                filetype = "numpy"
+            elif identifier.endswith(".nc"):
+                filetype = "netCDF4"
+            elif identifier.endswith(".pkl"):
+                filetype = "pickle"
+            elif identifier.endswith((".nii", ".nii.gz")):
+                filetype = "NIfTI"
+            elif identifier.endswith((".png", ".jpg")):
+                filetype = "PIL"
+            elif identifier.endswith(".edf"):
+                filetype = "EDF"
+            elif identifier.endswith(".fif"):
+                filetype = "mne.Epochs" if path.stem[-4:] == "-epo" else "mne.io.Raw"
+            else:
+                raise ValueError
         else:
             filetype = self.filetype
 

@@ -2,9 +2,11 @@ import contextlib
 import importlib
 import pickle  # noqa: S403
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
-from pathlib import Path
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from pathlib import Path
 
 
 def _is_installed(package_name: str) -> bool:
@@ -118,22 +120,21 @@ if _is_installed("xarray"):
 if _is_installed("nibabel"):
     import nibabel as nib
 
-    class Nifti1ImageHandler(Handler):
+    class NiftiSpatialImageHandler(Handler):
         def __init__(self: Self) -> None:
             super().__init__()
 
         @staticmethod
         def save(
-            result: nib.nifti1.Nifti1Image,
+            result: nib.spatialimages.SpatialImage,
             *,
             path: Path,
             **kwargs: Any,
         ) -> None:
-            if isinstance(result, nib.nifti1.Nifti1Image):
-                nib.save(result, path)
+            nib.save(result, path)
 
         @staticmethod
-        def load(path: Path, **kwargs: Any) -> nib.nifti1.Nifti1Image:
+        def load(path: Path, **kwargs: Any) -> nib.spatialimages.SpatialImage:
             return nib.load(path)
 
 
@@ -209,7 +210,7 @@ def get_handler(filetype: str) -> Handler:
                 return XarrayHandler()
         case "NIfTI":
             if _is_installed("nibabel"):
-                return Nifti1ImageHandler()
+                return NiftiSpatialImageHandler()
         case "PIL":
             if _is_installed("PIL"):
                 return PillowImageHandler()
@@ -218,7 +219,7 @@ def get_handler(filetype: str) -> Handler:
                 return EdfHandler()
         case "mne.io.Raw":
             if _is_installed("mne"):
-                return MneEpochsHandler()
+                return MneRawHandler()
         case "mne.Epochs":
             if _is_installed("mne"):
                 return MneEpochsHandler()
