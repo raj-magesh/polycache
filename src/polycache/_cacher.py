@@ -1,5 +1,4 @@
 import functools
-import importlib
 import inspect
 import os
 from pathlib import Path
@@ -7,14 +6,10 @@ from typing import TYPE_CHECKING, Any, ParamSpec, Self, TypeVar
 
 from xdg_base_dirs import xdg_cache_home
 
-from polycache._handlers import get_handler
+from polycache._handlers import _is_installed, get_handler
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
-
-
-def _is_installed(package_name: str) -> bool:
-    return importlib.util.find_spec(package_name) is not None
 
 
 if _is_installed("mne"):
@@ -215,7 +210,7 @@ class Cacher:
                 suffix = None
 
             if _is_installed("mne"):
-                if isinstance(result, mne.io.Raw):
+                if isinstance(result, mne.io.BaseRaw):
                     filetype = "mne.io.Raw"
                     suffix = ".fif"
                 elif isinstance(result, mne.Epochs):

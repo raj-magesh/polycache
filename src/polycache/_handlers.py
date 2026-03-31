@@ -183,7 +183,7 @@ if _is_installed("mne"):
 
         @staticmethod
         def load(path: Path, **kwargs: Any) -> Image.Image:
-            return mne.read_raw_fif(path, **kwargs)
+            return mne.io.read_raw_fif(path, **kwargs)
 
     class MneEpochsHandler(Handler):
         def __init__(self: Self) -> None:
