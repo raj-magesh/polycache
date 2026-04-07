@@ -16,6 +16,7 @@ if _is_installed("mne"):
     import mne
 if _is_installed("nibabel"):
     import nibabel as nib
+    import nibabel.spatialimages
 if _is_installed("numpy"):
     import numpy as np
 if _is_installed("xarray"):

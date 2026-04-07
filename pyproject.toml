@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build"]
+requires = ["uv_build==0.11.3"]
 build-backend = "uv_build"
 
 [project]
@@ -47,6 +47,7 @@ dev = [
     "numpy",
     "xarray",
     "cf-xarray",
+    "edfio",
     "nibabel",
     "Pillow",
     "mne",
