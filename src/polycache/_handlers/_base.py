@@ -15,12 +15,10 @@ class Handler(ABC):
         return
 
     @abstractmethod
-    @staticmethod
     def save(result: Any, *, path: Path, **kwargs: Any) -> None:
         pass
 
     @abstractmethod
-    @staticmethod
     def load(path: Path, **kwargs: Any) -> Any:
         pass
 
