@@ -150,9 +150,12 @@ def cache[**P, R](  # noqa: C901, PLR0913
     The following example will cache the output of ``add(3, 5)`` to
     ``~/output/sums/first_arg_3/second_arg_5.pkl`` as a Python pickle file.
 
-    >> from pathlib import Path >> >> @cache(
+    >> from pathlib import Path
+    >>
+    >> @cache(
     >>    path=Path.home() / "output",
-    >>    identifier="sums/first_arg_{x}/second_arg_{y}.pkl", filetype="pickle",
+    >>    identifier="sums/first_arg_{x}/second_arg_{y}.pkl",
+    >>    filetype="pickle",
     >> )
     >> def add(x: int, y: int) -> int:
     >>     return x + y
