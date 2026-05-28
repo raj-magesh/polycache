@@ -13,9 +13,11 @@ authors = [
     { name = "Raj Magesh Gauthaman", email = "polycache@raj-magesh.org" },
 ]
 keywords = [
-    "cache function outputs",
-    "local disk",
-    "multiple native formats",
+    "cache",
+    "disk",
+    "flexible",
+    "extensible",
+    "native formats",
     "decorator",
     "pickle",
     "numpy",
