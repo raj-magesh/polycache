@@ -1,6 +1,6 @@
 # Polycache
 
-This Python package provides a simple decorator that allows you to cache function outputs to disk.
+This Python package provides a simple decorator that allows you to cache the outputs of function calls to disk.
 
 1. Evaluate an expensive function once.
 2. Store its output on disk.
@@ -20,41 +20,6 @@ This Python package provides a simple decorator that allows you to cache functio
 - **Extensible**: You can define custom `save` and `load` functions to use your own file formats.
 - **Lazy**: When supported by the file format, cached results are lazy-loaded by default to speed up the function call and save memory.
     - For example, [`xarray.Dataset`](https://docs.xarray.dev/en/stable/generated/xarray.Dataset.html) outputs are loaded from `.nc` netCDF-4 files using [`xarray.open_dataset`](https://docs.xarray.dev/en/stable/generated/xarray.open_dataset.html) (lazy) instead of [`xarray.load_dataarray`](https://docs.xarray.dev/en/stable/generated/xarray.load_dataset.html) (which eagerly loads the file contents into memory).
-
-## Usage
-
-The following example will cache the output of `add(3, 5)` to `~/output/sums/first_arg_3/second_arg_5.pkl` as a Python pickle file.
-
-```python
-from pathlib import Path
-
-@cache(
-   path=Path.home() / "output",
-   identifier="sums/first_arg_{x}/second_arg_{y}.pkl",
-   filetype="pickle",
-)
-def add(x: int, y: int) -> int:
-    return x + y
-```
-
-The following example will cache the output of `add({"three": 3, "five": 5})` to `$POLYCACHE_HOME/analysis/keys=three.five/values=3_5/True.pkl`.
-
-```python
-analysis = "fancy_sum"
-
-@cache(
-    f"{analysis}/keys={{dict_keys}}/values={{dict_values}}/{{flag}}.pkl",
-    helper=lambda kwargs: {
-        "dict_keys": ".".join(list(kwargs["x"].keys())),
-        "dict_values": "_".join(list(kwargs["x"].values())),
-        "flag": kwargs["flag"],
-    },
-)
-def add(x: dict[str, float], flag: bool = True) -> float:
-    return sum(list(x.values()))
-```
-
-## Supported file formats
 
 ## Acknowledgments
 

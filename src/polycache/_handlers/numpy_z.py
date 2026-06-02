@@ -14,13 +14,9 @@ def save(
     /,
     *,
     filepath: Path,
-    compress: bool = False,
     **kwargs: Any,  # noqa: ANN401
 ) -> None:
-    if compress:
-        np.savez_compressed(filepath, **(kwargs | result))
-    else:
-        np.savez(filepath, **(kwargs | result))
+    np.savez_compressed(filepath, **(kwargs | result))
 
 
 def load(filepath: Path, /, **kwargs: Any) -> NpzFile:  # noqa: ANN401

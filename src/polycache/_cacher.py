@@ -8,8 +8,6 @@ import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from xdg_base_dirs import xdg_cache_home
-
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
     from types import ModuleType
@@ -43,7 +41,7 @@ Filetype = Literal[
     "PIL",
 ]
 
-Mode = Literal["normal", "readonly", "overwrite", "ignore", "delete"]
+Mode = Literal["normal", "readonly", "overwrite", "disabled"]
 
 SUFFIXES: dict[Filetype, tuple[str, ...]] = {
     "EDF": (".edf",),
@@ -57,184 +55,122 @@ SUFFIXES: dict[Filetype, tuple[str, ...]] = {
     "PIL": (".png", ".jpg"),
 }
 
-POLYCACHE_HOME = Path(
-    os.getenv(
-        "POLYCACHE_HOME",
-        str(xdg_cache_home() / "polycache"),
-    ),
-)
 
-
-def cache[**P, R](  # noqa: C901, PLR0913
+def cache[**P, R](  # noqa: PLR0913
     identifier: str,
     *,
-    path: Path = POLYCACHE_HOME,
-    helper: Callable[[Mapping[str, Any]], dict[str, str]] | None = None,
     filetype: Filetype | None = None,
+    root_dir: Path | None = None,
     mode: Mode = "normal",
-    kwargs_save: Mapping[str, Any] | None = None,
-    kwargs_load: Mapping[str, Any] | None = None,
+    remapper: Callable[[Mapping[str, Any]], dict[str, str]] | None = None,
+    save_kws: Mapping[str, Any] | None = None,
+    load_kws: Mapping[str, Any] | None = None,
+    save_fn: Callable[[Any, Path], None] | None = None,
+    load_fn: Callable[[Path], Any] | None = None,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Cache outputs of functions to disk.
+    """Cache outputs of function calls to disk.
 
-    Avoids re-evaluation of (potentially expensive) function when called again.
+    When this decorator is applied to a function and the decorated function is called for the first time, its output is stored on disk. Whenever the decorated function is called again, the stored value is retrieved from disk and returned.
 
-    When the cacher is called on a function for the first time, it computes the
-    output of the function and stores it on disk at the path ``path /
-    identifier``. Whenever the function is called again, the cached value is
-    retrieved from disk and returned.
+    This decorator can be customized extensively to
 
-    The identifier can be parameterized by the function inputs. For example, if
-    the function takes in the integer x as input, setting the identifier to
-    "{x}.pkl" will result in the filename "2.pkl". This is accomplished by
-    calling ``identifier.format(*args, **kwargs)``, which requires that the
-    template arguments have direct string representations. For additional
-    flexibility, the cacher offers the ``helper`` argument, which must be a
-    function that takes in the arguments to the function as a dictionary and
-    returns a dictionary mapping template variables to actual values, including
-    potential evaluations.
+    - flexibly parameterize the filepath of the saved output based on the function arguments (see ``identifier`` and ``remapper``),
+    - use different file formats based on the return type of the function output (see ``filetype``),
+    - control the save/load processes (see ``save_kws`` and ``load_kws``),
+    - use custom save/load functions to support new file formats (see the ``save_fn`` and ``load_fn`` parameters)
+    - change the cache directory (see ``root_dir``), and
+    - change how cached outputs are used (see ``mode``).
 
     Parameters
     ----------
     identifier
-        Subpath of the file to be cached. As shown in the examples below,
-        this string can be flexibly parameterized by the function arguments
-        at runtime.
-    helper
-        Allows parameterization of the identifier by the function arguments.
-        See the examples below for usage.
-    path
-        Cache directory to save to/load from. If not specified, defaults to
-        ``$POLYCACHE_HOME``, ``$XDG_CACHE_HOME/polycache``, and
-        ``$HOME/.cache/polycache``, in that order.
-    mode
-        Controls the behavior of the cacher:
-            * "normal" (default): If the function output has been previously cached, the
-                stored value is retrieved and returned. If the output has not
-                been previously cached, the function body is run and the output
-                is cached.
-            * "readonly": If the function output has been previously cached,
-                the stored value is retrieved and returned. If the output has
-                not been previously cached, the function body is run but the
-                output is NOT cached.
-            * "overwrite": The function body is run and the output is
-                cached, overwriting any existing cached output. Existing cached
-                values are not read.
-            * "delete": The function body is run and the output is returned.
-                Any existing cached values are deleted.
-            * "ignore": The function body is run and the output is returned.
-                Any existing cached values are ignored.
+        Filepath where the function's out should be cached, relative to ``root_dir``. See the Examples section for how this filepath can be parameterized by the function arguments.
     filetype
-        Protocols used to save/load the files to disk. Supported
-        filetypes include:
-            * None (default): Uses one of the following filetypes depending
-                on the output of the function.
-            * "numpy": If the function output is a single numpy array, the
-                `numpy.save` function is used.
-            * "netCDF4": If the function output is an xarray.DataArray or an
-                xarray.Dataset, the `.to_netcdf` method is used to save the
-                variables to disk.
-            * "pickle": All other function outputs are pickled.
-                Defaults to "auto".
-    kwargs_save
-        Optional keyword arguments passed to the serialization function.
-    kwargs_load
-        Optional keyword arguments passed to the deserialization function.
+        File format used to cache the function's output.
+
+        When ``None`` (default), automatically selects a file format based on the return type of the function. In this case, ``identifier`` must end with a valid suffix (see the documentation); otherwise, cached results cannot be successfully loaded from disk.
+
+        The `pickle <https://docs.python.org/3/library/pickle.html>`_ format is used as a fallback if no more appropriate file format is available.
+    root_dir
+        Cache directory to save files to/load files from. Defaults to the first of ``$POLYCACHE_HOME``, ``$XDG_CACHE_HOME/polycache``, and ``$HOME/.cache/polycache``.
+    mode
+        Controls how cached outputs are used:
+            - ``"normal"`` (default): If the function's output has been previously cached, the stored value is retrieved and returned. If not, the function is run and its output is cached.
+            - ``"readonly"``: If the function's output has been previously cached, the stored value is retrieved and returned. If not, the function is run but its output is NOT cached.
+            - ``"overwrite"``: The function is run and its output is cached, overwriting any existing cached output, if it exists.
+            - ``"disabled"``: The function is run and its output is returned. Any existing cached values are ignored.
+    remapper
+        Function supporting more complex parameterization of the identifier by the function arguments. See the Examples section for usage.
+    save_kws
+        Keyword arguments passed to the save function (see the documentation).
+    load_kws
+        Keyword arguments passed to the load function (see the documentation).
+    save_fn
+        Custom function to use to save the result of the function. Accepts exactly two arguments: the function result and the filepath.
+    load_fn
+        Custom function to use to load the cached result from the filepath. Accepts exactly one argument: the filepath.
 
     Returns
     -------
-        Decorated function.
+    A decorator that can be applied to any function to cache its outputs to disk.
 
-    Examples
-    --------
-    The following example will cache the output of ``add(3, 5)`` to
-    ``~/output/sums/first_arg_3/second_arg_5.pkl`` as a Python pickle file.
 
-    >> from pathlib import Path
-    >>
-    >> @cache(
-    >>    path=Path.home() / "output",
-    >>    identifier="sums/first_arg_{x}/second_arg_{y}.pkl",
-    >>    filetype="pickle",
-    >> )
-    >> def add(x: int, y: int) -> int:
-    >>     return x + y
+    """  # noqa: E501
+    # TODO Investigate if ``remapper`` can be replaced with template strings
 
-    The following example will cache the output of ``add({"three": 3, "five":
-    5})`` to ``$POLYCACHE_HOME/analysis/keys=three.five/values=3_5/True.pkl``.
-
-    >> analysis = "fancy_sum"
-    >>
-    >> @cache(
-    >>     f"{analysis}/keys={{dict_keys}}/values={{dict_values}}/{{flag}}.pkl",
-    >>     helper=lambda kwargs: {
-    >>         "dict_keys": ".".join(list(kwargs["x"].keys())),
-    >>         "dict_values": "_".join(list(kwargs["x"].values())),
-    >>         "flag": kwargs["flag"],
-    >>     },
-    >> )
-    >> def add(x: dict[str, float], flag: bool = True) -> float:
-    >>     return sum(list(x.values()))
-
-    Todo
-    ----
-        * Track progress of :PEP: `501` (https://peps.python.org/pep-0501/)
-            which introduces lazy f-strings. This would allow for a simpler
-            implementation without the ``helper`` argument.
-
-    """
-
-    def decorator[**P, R](func: Callable[P, R]) -> Callable[P, R]:  # noqa: C901
+    def decorator[**P, R](func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            signature = inspect.signature(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:  # noqa: PLR0912
+            # temporarily strip annotations because inspecting the signature fails at runtime if the type of the parameter is only defined in a TYPE_CHECKING block
+            annotations = getattr(func, "__annotations__", None)
+            func.__annotations__ = {}
+            try:
+                signature = inspect.signature(func)
+            finally:
+                if annotations is None:
+                    del func.__annotations__
+                else:
+                    func.__annotations__ = annotations
+
             bound_arguments = signature.bind(*args, **kwargs)
             bound_arguments.apply_defaults()
             args_to_format = bound_arguments.arguments
 
-            if helper is not None:
-                args_to_format = helper(args_to_format)
+            if remapper:
+                args_to_format = remapper(args_to_format)
 
-            filepath = path / identifier.format(**args_to_format)
+            filepath = (
+                (root_dir or get_polycache_home())
+                / identifier.format(**args_to_format)
+            )  # fmt: skip
+
+            saver = save_fn or functools.partial(
+                save,
+                filetype=filetype,
+                **save_kws if save_kws is not None else {},
+            )
+            loader = load_fn or functools.partial(
+                load,
+                filetype=filetype,
+                **load_kws if load_kws is not None else {},
+            )
 
             match mode:
                 case "normal":
                     if filepath.exists():
-                        result = _load(
-                            filepath,
-                            filetype=filetype,
-                            **kwargs_load if kwargs_load is not None else {},
-                        )
+                        result = loader(filepath)
                     else:
                         result = func(*args, **kwargs)
-                        _save(
-                            result,
-                            filepath=filepath,
-                            filetype=filetype,
-                            **kwargs_save if kwargs_save is not None else {},
-                        )
+                        saver(result, filepath)
                 case "readonly":
                     if filepath.exists():
-                        result = _load(
-                            filepath,
-                            filetype=filetype,
-                            **kwargs_load if kwargs_load is not None else {},
-                        )
+                        result = loader(filepath)
                     else:
                         result = func(*args, **kwargs)
                 case "overwrite":
                     result = func(*args, **kwargs)
-                    _save(
-                        result,
-                        filepath=filepath,
-                        filetype=filetype,
-                        **kwargs_save if kwargs_save is not None else {},
-                    )
-                case "delete":
-                    if filepath.exists():
-                        filepath.unlink()
-                    result = func(*args, **kwargs)
-                case "ignore":
+                    saver(result, filepath)
+                case "disabled":
                     result = func(*args, **kwargs)
                 case _:
                     error = f"Provided mode ({mode}) is invalid"
@@ -246,36 +182,32 @@ def cache[**P, R](  # noqa: C901, PLR0913
     return decorator
 
 
-def _save(
+def get_polycache_home() -> Path:
+    if polycache_home := os.getenv("POLYCACHE_HOME"):
+        return Path(polycache_home)
+    if xdg_cache_home := os.getenv("XDG_CACHE_HOME"):
+        return Path(xdg_cache_home) / "polycache"
+    return Path.home() / ".cache" / "polycache"
+
+
+def save(
     result: Any,  # noqa: ANN401
+    filepath: Path,
     /,
     *,
-    filepath: Path,
     filetype: Filetype | None,
     **kwargs: Any,  # noqa: ANN401
 ) -> None:
     identifier = filepath.name
 
     if filetype is None:
-        filetype = _infer_filetype_from_result(result)
-        filetype_inferred_from_identifier = _infer_filetype_from_identifier(identifier)
+        filetype = infer_filetype_from_result(result)
+        filetype_inferred_from_identifier = infer_filetype_from_identifier(identifier)
         if filetype != filetype_inferred_from_identifier:
-            error = (
-                f"Filetype (`{filetype}`) inferred from result does not match the "
-                f"filetype (`{filetype_inferred_from_identifier}`) inferred from the"
-                f" suffix of the identifier (`{identifier}`). This result will be"
-                " cached successfully now, but will fail to load from cache when"
-                " re-run. To fix this, ensure that the `identifier` ends with one of"
-                f" the expected suffixes ({SUFFIXES[filetype]}) or specify a"
-                " `filetype` manually."
-            )
+            error = f"Filetype (`{filetype}`) inferred from result does not match the filetype (`{filetype_inferred_from_identifier}`) inferred from the suffix of the identifier (`{identifier}`). This result will be cached successfully now, but will fail to load from cache when re-run. To fix this, ensure that the `identifier` ends with one of the expected suffixes ({SUFFIXES[filetype]}) or specify a `filetype` manually."  # noqa: E501
             warnings.warn(error, stacklevel=3)
 
-    # Ensure that writes are atomic. In some cases, the handler saves the result
-    # to a different filepath than provided (e.g. numpy.savez adds the .npz
-    # suffix to filenames that don't have it). To work around this, we create a
-    # temporary directory, write to a filepath in that directory, then move the
-    # file created in that directory to our desired filepath, whatever its name.
+    # Ensure that writes are atomic. In some cases, the handler saves the result to a different filepath than provided (e.g. numpy.savez adds the .npz suffix to filenames that don't have it). To work around this, we create a temporary directory, write to a filepath in that directory, then move the file created in that directory to our desired filepath, whatever its name.  # noqa: E501
     filepath.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(
@@ -283,14 +215,13 @@ def _save(
         dir=filepath.parent,
         prefix="tmp.polycache",
     ) as tmp_dir:
-        _get_handler(filetype).save(
+        get_handler(filetype).save(
             result,
             filepath=Path(tmp_dir) / filepath.name,
             **kwargs,
         )
 
-    # There should be only one file here, but I'm not validating that---just
-    # using the first file I find.
+    # There should be only one file here, but I'm not validating that---just using the first file I find.  # noqa: E501
     for tmp_file in Path(tmp_dir).glob("*"):
         if tmp_file.is_file():
             tmp_file.move(filepath)
@@ -299,9 +230,9 @@ def _save(
     Path(tmp_dir).rmdir()
 
 
-def _load(filepath: Path, /, *, filetype: Filetype | None, **kwargs: Any) -> Any:  # noqa: ANN401
+def load(filepath: Path, /, *, filetype: Filetype | None, **kwargs: Any) -> Any:  # noqa: ANN401
     identifier = filepath.name
-    filetype = filetype or _infer_filetype_from_identifier(identifier)
+    filetype = filetype or infer_filetype_from_identifier(identifier)
     if filetype is None:
         error = (
             "Filetype could not be detected based on the"
@@ -309,10 +240,10 @@ def _load(filepath: Path, /, *, filetype: Filetype | None, **kwargs: Any) -> Any
         )
         raise ValueError(error)
 
-    return _get_handler(filetype).load(filepath, **kwargs)
+    return get_handler(filetype).load(filepath, **kwargs)
 
 
-def _infer_filetype_from_identifier(identifier: str, /) -> Filetype | None:
+def infer_filetype_from_identifier(identifier: str, /) -> Filetype | None:
     for filetype, expected_suffixes in SUFFIXES.items():
         for suffix in expected_suffixes:
             if identifier.endswith(suffix):
@@ -320,7 +251,7 @@ def _infer_filetype_from_identifier(identifier: str, /) -> Filetype | None:
     return None
 
 
-def _infer_filetype_from_result(result: Any) -> Filetype:  # noqa: ANN401, C901, PLR0911
+def infer_filetype_from_result(result: Any) -> Filetype:  # noqa: ANN401, C901, PLR0911
     if OPTIONAL_PACKAGES["edfio"] and isinstance(result, edfio.Edf):
         return "EDF"
     if OPTIONAL_PACKAGES["mne"]:
@@ -328,7 +259,7 @@ def _infer_filetype_from_result(result: Any) -> Filetype:  # noqa: ANN401, C901,
             return "mne.io.Raw"
         if isinstance(result, mne.Epochs):
             return "mne.Epochs"
-    if OPTIONAL_PACKAGES["xarray"] and isinstance(result, xr.DataArray | xr.Dataset):
+    if OPTIONAL_PACKAGES["xarray"] and isinstance(result, (xr.DataArray, xr.Dataset)):
         return "netCDF4"
     if OPTIONAL_PACKAGES["nibabel"] and isinstance(result, SpatialImage):
         return "NIfTI"
@@ -344,6 +275,6 @@ def _infer_filetype_from_result(result: Any) -> Filetype:  # noqa: ANN401, C901,
     return "pickle"
 
 
-def _get_handler(filetype: Filetype) -> ModuleType:
+def get_handler(filetype: Filetype) -> ModuleType:
     module = filetype.replace(".", "_").lower()
     return importlib.import_module(f"polycache._handlers.{module}")

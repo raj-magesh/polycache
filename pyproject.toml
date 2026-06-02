@@ -38,7 +38,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 urls = { repository = "https://codeberg.org/raj-magesh/polycache" }
-dependencies = ["xdg-base-dirs"]
+dependencies = []
 version = "0.1.0"
 
 [dependency-groups]
@@ -46,6 +46,9 @@ dev = [
     "ruff",
     "pytest",
     "sphinx",
+    "furo",
+    "sphinx-autodoc-typehints",
+    "sphinx_readme",
     "numpy",
     "xarray",
     "cf-xarray",

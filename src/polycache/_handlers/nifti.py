@@ -16,8 +16,8 @@ def save(
     filepath: Path,
     **kwargs: Any,  # noqa: ANN401
 ) -> None:
-    result.to_filename(filepath, **kwargs)
+    nib.loadsave.save(img=result, filename=filepath, **kwargs)
 
 
 def load(filepath: Path, /, **kwargs: Any) -> FileBasedImage:  # noqa: ANN401
-    return nib.load(filepath, **kwargs)
+    return nib.loadsave.load(filename=filepath, **kwargs)
