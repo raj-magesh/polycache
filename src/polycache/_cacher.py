@@ -33,7 +33,7 @@ Filetype = Literal[
     "EDF",
     "mne.Epochs",
     "mne.io.Raw",
-    "netCDF4",
+    "xarray",
     "NIfTI",
     "numpy",
     "numpy.z",
@@ -47,7 +47,7 @@ SUFFIXES: dict[Filetype, tuple[str, ...]] = {
     "EDF": (".edf",),
     "mne.Epochs": ("-epo.fif",),
     "mne.io.Raw": (".fif",),
-    "netCDF4": (".nc",),
+    "xarray": (".nc",),
     "NIfTI": (".nii.gz", ".nii"),
     "numpy.z": (".npz",),
     "numpy": (".npy",),
@@ -260,7 +260,7 @@ def infer_filetype_from_result(result: Any) -> Filetype:  # noqa: ANN401, C901, 
         if isinstance(result, mne.Epochs):
             return "mne.Epochs"
     if OPTIONAL_PACKAGES["xarray"] and isinstance(result, (xr.DataArray, xr.Dataset)):
-        return "netCDF4"
+        return "xarray"
     if OPTIONAL_PACKAGES["nibabel"] and isinstance(result, SpatialImage):
         return "NIfTI"
     if OPTIONAL_PACKAGES["numpy"]:
