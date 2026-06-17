@@ -113,24 +113,15 @@ def cache[**P, R](  # noqa: PLR0913
     Returns
     -------
     A decorator that can be applied to any function to cache its outputs to disk.
-
-
     """  # noqa: E501
     # TODO Investigate if ``remapper`` can be replaced with template strings
 
     def decorator[**P, R](func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:  # noqa: PLR0912
-            # temporarily strip annotations because inspecting the signature fails at runtime if the type of the parameter is only defined in a TYPE_CHECKING block
-            annotations = getattr(func, "__annotations__", None)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            # strip annotations because inspecting the signature fails at runtime if the type of the parameter is only defined in a TYPE_CHECKING block
             func.__annotations__ = {}
-            try:
-                signature = inspect.signature(func)
-            finally:
-                if annotations is None:
-                    del func.__annotations__
-                else:
-                    func.__annotations__ = annotations
+            signature = inspect.signature(func)
 
             bound_arguments = signature.bind(*args, **kwargs)
             bound_arguments.apply_defaults()
