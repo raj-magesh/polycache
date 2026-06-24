@@ -6,36 +6,36 @@ build-backend = "uv_build"
 name = "polycache"
 description = "Cache function outputs to disk in a variety of native formats using a single flexible decorator"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 authors = [
-    { name = "Raj Magesh Gauthaman", email = "polycache@raj-magesh.org" },
+  { name = "Raj Magesh Gauthaman", email = "polycache@raj-magesh.org" },
 ]
 keywords = [
-    "cache",
-    "disk",
-    "flexible",
-    "extensible",
-    "native formats",
-    "decorator",
-    "pickle",
-    "numpy",
-    "xarray",
-    "netCDF4",
-    "nibabel",
-    "NIfTI",
-    "MNE-Python",
-    "EDF",
+  "cache",
+  "disk",
+  "flexible",
+  "extensible",
+  "native formats",
+  "decorator",
+  "pickle",
+  "numpy",
+  "xarray",
+  "netCDF4",
+  "nibabel",
+  "NIfTI",
+  "MNE-Python",
+  "EDF",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Science/Research",
-    "Natural Language :: English",
-    "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python :: 3",
-    "Topic :: Scientific/Engineering",
-    "Typing :: Typed",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
 ]
 urls = { repository = "https://codeberg.org/raj-magesh/polycache" }
 dependencies = []
@@ -43,23 +43,23 @@ version = "0.1.0"
 
 [dependency-groups]
 dev = [
-    "ruff",
-    "ty",
-    "pytest",
-    "sphinx",
-    "furo",
-    "sphinx-autodoc-typehints",
-    "sphinx_readme",
-    "numpy",
-    "xarray",
-    "cf-xarray",
-    "edfio",
-    "nibabel",
-    "Pillow",
-    "mne",
+  "ruff",
+  "ty",
+  "pytest",
+  "sphinx",
+  "furo",
+  "sphinx-autodoc-typehints",
+  "sphinx_readme",
+  "numpy",
+  "xarray",
+  "cf-xarray",
+  "edfio",
+  "nibabel",
+  "Pillow",
+  "mne",
 ]
 
 [tool.uv]
 required-environments = [
-    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
