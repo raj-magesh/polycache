@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import importlib.util
 from typing import TYPE_CHECKING, Any

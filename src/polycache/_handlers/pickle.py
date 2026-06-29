@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle  # noqa: S403
 from typing import TYPE_CHECKING, Any
 

@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import functools
 import importlib
 import importlib.util
 import inspect
 import os
+import shutil
 import tempfile
 import warnings
 from pathlib import Path
@@ -215,7 +218,7 @@ def save(
     # There should be only one file here, but I'm not validating that---just using the first file I find.  # noqa: E501
     for tmp_file in Path(tmp_dir).glob("*"):
         if tmp_file.is_file():
-            tmp_file.move(filepath)
+            shutil.move(tmp_file, filepath)
             break
 
     Path(tmp_dir).rmdir()
