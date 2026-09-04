@@ -41,6 +41,7 @@ urls = { source = "https://codeberg.org/raj-magesh/polycache" }
 dependencies = []
 
 [dependency-groups]
+# TODO split these into groups based on utility, to allow separate installation
 dev = [
   "ruff",
   "ty",
@@ -51,6 +52,7 @@ dev = [
   "sphinx_readme",
   "numpy",
   "xarray",
+  "netCDF4",
   "cf-xarray",
   "edfio",
   "nibabel",
