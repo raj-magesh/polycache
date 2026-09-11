@@ -36,6 +36,8 @@ Filetype = Literal[
     "EDF",
     "mne.Epochs",
     "mne.io.Raw",
+    "mne.time_frequency.TFR",
+    "mne.Report",
     "xarray",
     "NIfTI",
     "numpy",
@@ -48,8 +50,10 @@ Mode = Literal["normal", "readonly", "overwrite", "disabled"]
 
 SUFFIXES: dict[Filetype, tuple[str, ...]] = {
     "EDF": (".edf",),
-    "mne.Epochs": ("-epo.fif",),
-    "mne.io.Raw": (".fif",),
+    "mne.Epochs": ("-epo.fif", "-epo.fif.gz"),
+    "mne.io.Raw": ("raw.fif", "raw.fif.gz"),
+    "mne.time_frequency.TFR": ("-tfr.h5", "-tfr.hdf5"),
+    "mne.Report": ("-report.h5", "-report.hdf5"),
     "xarray": (".nc",),
     "NIfTI": (".nii.gz", ".nii"),
     "numpy.z": (".npz",),
@@ -59,7 +63,7 @@ SUFFIXES: dict[Filetype, tuple[str, ...]] = {
 }
 
 
-def cache[**P, R](  # noqa: PLR0913
+def cache[**P, R](  # ruff: ignore[too-many-arguments]
     identifier: str,
     *,
     filetype: Filetype | None = None,
@@ -116,7 +120,7 @@ def cache[**P, R](  # noqa: PLR0913
     Returns
     -------
     A decorator that can be applied to any function to cache its outputs to disk.
-    """  # noqa: E501
+    """  # ruff: ignore[line-too-long]
     # TODO Investigate if ``remapper`` can be replaced with template strings
 
     def decorator[**P, R](func: Callable[P, R]) -> Callable[P, R]:
@@ -151,15 +155,15 @@ def cache[**P, R](  # noqa: PLR0913
 
             match mode:
                 case "normal":
-                    if filepath.exists():
+                    try:
                         result = loader(filepath)
-                    else:
+                    except FileNotFoundError:
                         result = func(*args, **kwargs)
                         saver(result, filepath)
                 case "readonly":
-                    if filepath.exists():
+                    try:
                         result = loader(filepath)
-                    else:
+                    except FileNotFoundError:
                         result = func(*args, **kwargs)
                 case "overwrite":
                     result = func(*args, **kwargs)
@@ -185,12 +189,12 @@ def get_polycache_home() -> Path:
 
 
 def save(
-    result: Any,  # noqa: ANN401
+    result: Any,  # ruff: ignore[any-type]
     filepath: Path,
     /,
     *,
     filetype: Filetype | None,
-    **kwargs: Any,  # noqa: ANN401
+    **kwargs: Any,  # ruff: ignore[any-type]
 ) -> None:
     identifier = filepath.name
 
@@ -198,10 +202,10 @@ def save(
         filetype = infer_filetype_from_result(result)
         filetype_inferred_from_identifier = infer_filetype_from_identifier(identifier)
         if filetype != filetype_inferred_from_identifier:
-            error = f"Filetype (`{filetype}`) inferred from result does not match the filetype (`{filetype_inferred_from_identifier}`) inferred from the suffix of the identifier (`{identifier}`). This result will be cached successfully now, but will fail to load from cache when re-run. To fix this, ensure that the `identifier` ends with one of the expected suffixes ({SUFFIXES[filetype]}) or specify a `filetype` manually."  # noqa: E501
+            error = f"Filetype (`{filetype}`) inferred from result does not match the filetype (`{filetype_inferred_from_identifier}`) inferred from the suffix of the identifier (`{identifier}`). This result will be cached successfully now, but will fail to load from cache when re-run. To fix this, ensure that the `identifier` ends with one of the expected suffixes ({SUFFIXES[filetype]}) or specify a `filetype` manually."  # ruff: ignore[line-too-long]
             warnings.warn(error, stacklevel=3)
 
-    # Ensure that writes are atomic. In some cases, the handler saves the result to a different filepath than provided (e.g. numpy.savez adds the .npz suffix to filenames that don't have it). To work around this, we create a temporary directory, write to a filepath in that directory, then move the file created in that directory to our desired filepath, whatever its name.  # noqa: E501
+    # Ensure that writes are atomic. In some cases, the handler saves the result to a different filepath than provided (e.g. numpy.savez adds the .npz suffix to filenames that don't have it). To work around this, we create a temporary directory, write to a filepath in that directory, then move the file created in that directory to our desired parent directory,   # ruff: ignore[line-too-long]
     filepath.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(
@@ -215,16 +219,15 @@ def save(
             **kwargs,
         )
 
-    # There should be only one file here, but I'm not validating that---just using the first file I find.  # noqa: E501
+    # There could be multiple files here because of split .fif files from MNE
     for tmp_file in Path(tmp_dir).glob("*"):
         if tmp_file.is_file():
-            shutil.move(tmp_file, filepath)
-            break
+            shutil.move(tmp_file, filepath.parent / tmp_file.name)
 
     Path(tmp_dir).rmdir()
 
 
-def load(filepath: Path, /, *, filetype: Filetype | None, **kwargs: Any) -> Any:  # noqa: ANN401
+def load(filepath: Path, /, *, filetype: Filetype | None, **kwargs: Any) -> Any:  # ruff: ignore[any-type]
     identifier = filepath.name
     filetype = filetype or infer_filetype_from_identifier(identifier)
     if filetype is None:
@@ -233,6 +236,10 @@ def load(filepath: Path, /, *, filetype: Filetype | None, **kwargs: Any) -> Any:
             f" suffix of the identifier ({identifier})"
         )
         raise ValueError(error)
+
+    # mne.open_report doesn't throw an error even if the file does not exist
+    if filetype == "mne.Report" and not filepath.exists():
+        raise FileNotFoundError
 
     return get_handler(filetype).load(filepath, **kwargs)
 
@@ -245,7 +252,7 @@ def infer_filetype_from_identifier(identifier: str, /) -> Filetype | None:
     return None
 
 
-def infer_filetype_from_result(result: Any) -> Filetype:  # noqa: ANN401, C901, PLR0911
+def infer_filetype_from_result(result: Any) -> Filetype:  # ruff: ignore[any-type, complex-structure, too-many-return-statements]
     if OPTIONAL_PACKAGES["edfio"] and isinstance(result, edfio.Edf):
         return "EDF"
     if OPTIONAL_PACKAGES["mne"]:
@@ -253,6 +260,10 @@ def infer_filetype_from_result(result: Any) -> Filetype:  # noqa: ANN401, C901, 
             return "mne.io.Raw"
         if isinstance(result, mne.Epochs):
             return "mne.Epochs"
+        if isinstance(result, mne.time_frequency.BaseTFR):
+            return "mne.time_frequency.TFR"
+        if isinstance(result, mne.Report):
+            return "mne.Report"
     if OPTIONAL_PACKAGES["xarray"] and isinstance(result, (xr.DataArray, xr.Dataset)):
         return "xarray"
     if OPTIONAL_PACKAGES["nibabel"] and isinstance(result, SpatialImage):
