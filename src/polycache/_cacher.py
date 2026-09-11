@@ -211,7 +211,7 @@ def save(
     with tempfile.TemporaryDirectory(
         delete=False,
         dir=filepath.parent,
-        prefix="tmp.polycache",
+        prefix="tmp.polycache-",
     ) as tmp_dir:
         get_handler(filetype).save(
             result,
