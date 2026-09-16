@@ -157,13 +157,13 @@ def cache[**P, R](  # ruff: ignore[too-many-arguments]
                 case "normal":
                     try:
                         result = loader(filepath)
-                    except FileNotFoundError:
+                    except:
                         result = func(*args, **kwargs)
                         saver(result, filepath)
                 case "readonly":
                     try:
                         result = loader(filepath)
-                    except FileNotFoundError:
+                    except:
                         result = func(*args, **kwargs)
                 case "overwrite":
                     result = func(*args, **kwargs)

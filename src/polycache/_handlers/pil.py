@@ -8,9 +8,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def save(result: Image.Image, /, *, filepath: Path, **kwargs: Any) -> None:  # noqa: ANN401
+def save(result: Image.Image, /, *, filepath: Path, **kwargs: Any) -> None:  # ruff: ignore[any-type]
     result.save(filepath, **kwargs)
 
 
-def load(filepath: Path, /, **kwargs: Any) -> Image.Image:  # noqa: ANN401
+def load(filepath: Path, /, **kwargs: Any) -> Image.Image:  # ruff: ignore[any-type]
     return Image.open(filepath, **kwargs)

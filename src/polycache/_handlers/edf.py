@@ -8,9 +8,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def save(result: edfio.Edf, /, *, filepath: Path, **kwargs: Any) -> None:  # noqa: ANN401
+def save(result: edfio.Edf, /, *, filepath: Path, **kwargs: Any) -> None:  # ruff: ignore[any-type]
     result.write(filepath, **kwargs)
 
 
-def load(filepath: Path, /, **kwargs: Any) -> edfio.Edf:  # noqa: ANN401
+def load(filepath: Path, /, **kwargs: Any) -> edfio.Edf:  # ruff: ignore[any-type]
     return edfio.read_edf(filepath, **kwargs)

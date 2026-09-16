@@ -16,10 +16,10 @@ def save(
     /,
     *,
     filepath: Path,
-    **kwargs: Any,  # noqa: ANN401
+    **kwargs: Any,  # ruff: ignore[any-type]
 ) -> None:
     np.savez_compressed(filepath, **(kwargs | result))
 
 
-def load(filepath: Path, /, **kwargs: Any) -> NpzFile:  # noqa: ANN401
+def load(filepath: Path, /, **kwargs: Any) -> NpzFile:  # ruff: ignore[any-type]
     return np.load(filepath, **kwargs)

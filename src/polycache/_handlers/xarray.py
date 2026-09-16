@@ -15,14 +15,14 @@ def save(
     /,
     *,
     filepath: Path,
-    **kwargs: Any,  # noqa: ANN401
+    **kwargs: Any,  # ruff: ignore[any-type]
 ) -> None:
     if isinstance(result, xr.DataArray):
         result = result.to_dataset()
 
     # if the Dataset has multi-indexes, serialize them
     if importlib.util.find_spec("cf_xarray"):
-        import cf_xarray  # noqa: PLC0415
+        import cf_xarray  # ruff: ignore[import-outside-top-level]
 
         with contextlib.suppress(ValueError):
             result = cf_xarray.encode_multi_index_as_compress(result)
@@ -30,12 +30,12 @@ def save(
     result.to_netcdf(filepath, **kwargs)
 
 
-def load(filepath: Path, /, **kwargs: Any) -> xr.DataArray | xr.Dataset:  # noqa: ANN401
+def load(filepath: Path, /, **kwargs: Any) -> xr.DataArray | xr.Dataset:  # ruff: ignore[any-type]
     result = xr.open_dataset(filepath, **kwargs)
 
     # if the Dataset has serialized multi-indexes, deserialize them
     if importlib.util.find_spec("cf_xarray"):
-        import cf_xarray  # noqa: PLC0415
+        import cf_xarray  # ruff: ignore[import-outside-top-level]
 
         with contextlib.suppress(ValueError):
             result = cf_xarray.decode_compress_to_multi_index(result)
