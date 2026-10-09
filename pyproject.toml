@@ -64,3 +64,21 @@ dev = [
 required-environments = [
   "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
+
+[tool.ruff]
+preview = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "missing-copyright-notice",
+  "line-too-long",
+  "missing-todo-link",
+  "missing-todo-author",
+]
+pydocstyle.convention = "numpy"
+logger-objects = ["loguru.logger"]
+typing-modules = ["numpy.typing"]
+
+[tool.deptry]
+known_first_party = ["polycache"]
